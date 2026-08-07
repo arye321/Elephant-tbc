@@ -1,0 +1,258 @@
+-- Utility method to sort the dropdowns menu choices alphabetically.
+local function SortTable(arg1, arg2)
+  -- Safeguard
+  if arg1 == nil or arg1.desc == nil then
+    return true
+  elseif arg2 == nil or arg2.desc == nil then
+    return false
+  end
+
+  local max_length = max(string.len(arg1.desc), string.len(arg2.desc))
+
+  local index = nil
+  local byte_diff = nil
+  local arg1_char = nil
+  local arg2_char = nil
+
+  for index = 1, max_length do
+    arg1_char = string.byte(arg1.desc, index)
+    if arg1_char == nil then
+      -- No more letters on arg1, so it should appear first.
+      return true
+    end
+
+    arg2_char = string.byte(arg2.desc, index)
+    if arg2_char == nil then
+      -- No more letters on arg2, so it should appear first.
+      return false
+    end
+
+    byte_diff = arg1_char - arg2_char
+
+    -- Alphabet goes with increasing byte values, so a difference less than 0
+    -- means the first letter appears before the second in the alphabet.
+    if byte_diff < 0 then
+      return true
+    elseif byte_diff > 0 then
+      return false
+    end
+  end
+
+  -- Happens when string are identical.
+  return false
+end
+
+-- Dropdowns
+--
+-- See below local functions declaration for dropdown creation function
+-- associations.
+
+local function DropdownCustomChatsInitialize()
+  local info = {}
+  info.text = Elephant.L["STRING_CHAT_NAME_CUSTOM"]
+  info.isTitle = true
+  UIDropDownMenu_AddButton(info, 1)
+
+  local log_index, log_tbl = nil, nil
+  for log_index, log_tbl in pairs(Elephant:LogsDb().logs) do
+    if
+      type(log_index) ~= "number"
+      and not Elephant:IsGeneralChatLogIndex(log_index)
+      -- Fix for custom chat not having a name. This may have happened due to
+      -- an older Elephant bug that created custom logs without a name.
+      -- Fixes itself on the next message sent or received on that custom
+      -- channel.
+      and log_tbl.name
+    then
+      info = {}
+      -- log_tbl.name always exists on custom chats.
+      info.text = log_tbl.name
+      info.func = Elephant.ChangeLog
+      info.arg1 = log_index
+      info.checked = GetChannelName(log_tbl.name) ~= 0
+      if not log_tbl.enabled then
+        info.colorCode = "|c" .. Elephant:MakeTextHexColor(1.0, 0.2, 0.2)
+        info.text = info.text .. " (" .. Elephant.L["STRING_DISABLED"] .. ")"
+      end
+      UIDropDownMenu_AddButton(info)
+    end
+  end
+end
+
+local function DropdownGeneralChatsInitialize()
+  local info
+
+  info = UIDropDownMenu_CreateInfo()
+  info.text = Elephant.L["STRING_CHAT_NAME_GENERAL"]
+  info.isTitle = true
+  info.notCheckable = true
+  UIDropDownMenu_AddButton(info)
+
+  local general_chat_channel_tbl
+  for _, general_chat_channel_tbl in
+    ipairs(Elephant:DefaultConfiguration().generalchatchannels)
+  do
+    if Elephant:LogsDb().logs[general_chat_channel_tbl.id] then
+      info = UIDropDownMenu_CreateInfo()
+      info.notCheckable = true
+      info.text = general_chat_channel_tbl.localized_name
+      info.func = Elephant.ChangeLog
+      info.arg1 = general_chat_channel_tbl.id
+      if not Elephant:LogsDb().logs[general_chat_channel_tbl.id].enabled then
+        info.colorCode = "|c" .. Elephant:MakeTextHexColor(1.0, 0.2, 0.2)
+        info.text = info.text .. " (" .. Elephant.L["STRING_DISABLED"] .. ")"
+      end
+      UIDropDownMenu_AddButton(info)
+    end
+  end
+end
+
+local function DropdownMiscChatsInitialize()
+  local info
+
+  info = UIDropDownMenu_CreateInfo()
+  info.text = Elephant.L["STRING_CHAT_NAME_MISC"]
+  info.isTitle = true
+  info.notCheckable = true
+  UIDropDownMenu_AddButton(info)
+
+  info = UIDropDownMenu_CreateInfo()
+  info.notCheckable = true
+  info.text = Elephant.L["STRING_CHAT_NAME_ACHIEVEMENT"]
+  info.func = Elephant.ChangeLog
+  info.arg1 = Elephant:DefaultConfiguration().defaultlogs.achievement.id
+  if
+    not Elephant:LogsDb().logs[Elephant:DefaultConfiguration().defaultlogs.achievement.id].enabled
+  then
+    info.colorCode = "|c" .. Elephant:MakeTextHexColor(1.0, 0.2, 0.2)
+    info.text = info.text .. " (" .. Elephant.L["STRING_DISABLED"] .. ")"
+  end
+  UIDropDownMenu_AddButton(info)
+
+  info = UIDropDownMenu_CreateInfo()
+  info.notCheckable = true
+  info.text = Elephant.L["STRING_CHAT_NAME_LOOT"]
+  info.func = Elephant.ChangeLog
+  info.arg1 = Elephant:DefaultConfiguration().defaultlogs.loot.id
+  if
+    not Elephant:LogsDb().logs[Elephant:DefaultConfiguration().defaultlogs.loot.id].enabled
+  then
+    info.colorCode = "|c" .. Elephant:MakeTextHexColor(1.0, 0.2, 0.2)
+    info.text = info.text .. " (" .. Elephant.L["STRING_DISABLED"] .. ")"
+  end
+  UIDropDownMenu_AddButton(info)
+
+  info = UIDropDownMenu_CreateInfo()
+  info.notCheckable = true
+  info.text = Elephant.L["STRING_CHAT_NAME_PET_BATTLE_COMBAT_LOG"]
+  info.func = Elephant.ChangeLog
+  info.arg1 = Elephant:DefaultConfiguration().defaultlogs.pet_battle.id
+  if
+    not Elephant:LogsDb().logs[Elephant:DefaultConfiguration().defaultlogs.pet_battle.id].enabled
+  then
+    info.colorCode = "|c" .. Elephant:MakeTextHexColor(1.0, 0.2, 0.2)
+    info.text = info.text .. " (" .. Elephant.L["STRING_DISABLED"] .. ")"
+  end
+  UIDropDownMenu_AddButton(info)
+
+  info = UIDropDownMenu_CreateInfo()
+  info.notCheckable = true
+  info.text = Elephant.L["STRING_CHAT_NAME_SYSTEM"]
+  info.func = Elephant.ChangeLog
+  info.arg1 = Elephant:DefaultConfiguration().defaultlogs.system.id
+  if
+    not Elephant:LogsDb().logs[Elephant:DefaultConfiguration().defaultlogs.system.id].enabled
+  then
+    info.colorCode = "|c" .. Elephant:MakeTextHexColor(1.0, 0.2, 0.2)
+    info.text = info.text .. " (" .. Elephant.L["STRING_DISABLED"] .. ")"
+  end
+  UIDropDownMenu_AddButton(info)
+end
+
+local function GetEventDesc(eventTable)
+  if eventTable.desc then
+    return eventTable.desc
+  elseif _G[eventTable.type] then
+    return _G[eventTable.type]
+  else
+    -- Should never happen, here just in case.
+    return "???"
+  end
+end
+
+local function DropdownCatchOptionsInitialize(frame, level)
+  local menu = {}
+
+  -- Getting events for current log
+  local eventKey, eventTable, catcherValue
+  for event_id, eventTable in pairs(Elephant:ProfileDb().events) do
+    local event_desc = GetEventDesc(eventTable)
+    if eventTable.channels and event_desc then
+      catcherValue = eventTable.channels[Elephant:CharDb().currentlogindex]
+      if catcherValue then
+        table.insert(menu, {
+          desc = event_desc,
+          key = event_id,
+          option = catcherValue,
+        })
+      end
+    end
+  end
+
+  table.sort(menu, SortTable)
+
+  local catcher, info
+  for _, catcher in pairs(menu) do
+    if catcher.option == -1 then
+      -- On first display, seems to be buggy: some of these entries are
+      -- displayed in white even if they are not clickable. If you find a fix,
+      -- congrats!
+      info = UIDropDownMenu_CreateInfo()
+      info.text = catcher.desc
+      info.checked = true
+      info.isNotRadio = true
+      info.disabled = true
+      UIDropDownMenu_AddButton(info)
+    elseif catcher.option == 0 then
+      info = UIDropDownMenu_CreateInfo()
+      info.text = catcher.desc
+      info.checked = false
+      info.func = Elephant.EnableCatcher
+      info.arg1 = catcher.key
+      info.arg2 = Elephant:CharDb().currentlogindex
+      info.isNotRadio = true
+      info.keepShownOnClick = 1
+      UIDropDownMenu_AddButton(info)
+    elseif catcher.option == 1 then
+      info = UIDropDownMenu_CreateInfo()
+      info.text = catcher.desc
+      info.checked = true
+      info.func = Elephant.DisableCatcher
+      info.arg1 = catcher.key
+      info.arg2 = Elephant:CharDb().currentlogindex
+      info.isNotRadio = true
+      info.keepShownOnClick = 1
+      UIDropDownMenu_AddButton(info)
+    end
+  end
+end
+
+-- Doing that way avoids calling each drop down initialization function at
+-- startup.
+Elephant.dropdowns = {}
+Elephant.dropdowns.customChats =
+  CreateFrame("Frame", "ElephantDropdown", UIParent, "UIDropDownMenuTemplate")
+Elephant.dropdowns.customChats.displayMode = "MENU"
+Elephant.dropdowns.customChats.initialize = DropdownCustomChatsInitialize
+Elephant.dropdowns.generalChats =
+  CreateFrame("Frame", "ElephantDropdown", UIParent, "UIDropDownMenuTemplate")
+Elephant.dropdowns.generalChats.displayMode = "MENU"
+Elephant.dropdowns.generalChats.initialize = DropdownGeneralChatsInitialize
+Elephant.dropdowns.miscChats =
+  CreateFrame("Frame", "ElephantDropdown", UIParent, "UIDropDownMenuTemplate")
+Elephant.dropdowns.miscChats.displayMode = "MENU"
+Elephant.dropdowns.miscChats.initialize = DropdownMiscChatsInitialize
+Elephant.dropdowns.catchOptions =
+  CreateFrame("Frame", "ElephantDropdown", UIParent, "UIDropDownMenuTemplate")
+Elephant.dropdowns.catchOptions.displayMode = "MENU"
+Elephant.dropdowns.catchOptions.initialize = DropdownCatchOptionsInitialize
