@@ -685,6 +685,28 @@ function Elephant:StripWoWFormatting(str)
   return str
 end
 
+-- Returns true if the message table corresponds to a session start logging header
+function Elephant:IsSessionStartMessage(msg_tbl)
+  if not msg_tbl then return false end
+  local literal_msg = Elephant:GetLiteralMessage(msg_tbl, true)
+  local stripped = Elephant:StripWoWFormatting(literal_msg)
+
+  local template = Elephant.L and Elephant.L["STRING_SPECIAL_LOG_LOGGING_STARTED_ON"]
+  if template then
+    local prefix = string.match(template, "^([^%%]+)")
+    if prefix and prefix ~= "" and string.find(stripped, prefix, 1, true) then
+      return true
+    end
+  end
+
+  return string.find(stripped, "Logging started", 1, true) ~= nil
+      or string.find(stripped, "Log commencé", 1, true) ~= nil
+      or string.find(stripped, "Log gestartet", 1, true) ~= nil
+      or string.find(stripped, "Запись начинается", 1, true) ~= nil
+      or string.find(stripped, "記錄開始", 1, true) ~= nil
+      or string.find(stripped, "记录开始", 1, true) ~= nil
+end
+
 -- Resets search query state and clears search input box
 function Elephant:ClearSearch()
   Elephant:VolatileConfig().search_query = ""
@@ -725,6 +747,7 @@ function Elephant:ShowCurrentLog()
     local query_lower = string.lower(trimmed_query)
     local log_entries = Elephant:LogsDb().logs[current_log_index].logs
     local match_count = 0
+    local last_added_header_index = 0
 
     for line_index = 1, #log_entries do
       local msg_tbl = log_entries[line_index]
@@ -733,7 +756,31 @@ function Elephant:ShowCurrentLog()
         local stripped_msg = Elephant:StripWoWFormatting(literal_msg)
         if string.find(string.lower(stripped_msg), query_lower, 1, true) then
           match_count = match_count + 1
-          ElephantFrameScrollingMessageFrame:AddMessage(literal_msg)
+
+          -- Find the nearest preceding session start header line
+          local header_idx = nil
+          for search_idx = line_index, 1, -1 do
+            if Elephant:IsSessionStartMessage(log_entries[search_idx]) then
+              header_idx = search_idx
+              break
+            end
+          end
+
+          -- Include session header if it hasn't been added yet for this result block
+          if header_idx and header_idx > last_added_header_index then
+            local header_literal = Elephant:GetLiteralMessage(log_entries[header_idx], true)
+            -- Render session start header in yellow so its location stands out
+            ElephantFrameScrollingMessageFrame:AddMessage(header_literal, 1.0, 1.0, 0.0)
+            last_added_header_index = header_idx
+          end
+
+          -- Add the matching result message (avoid duplicate if header line itself matched)
+          if line_index ~= last_added_header_index or not header_idx then
+            ElephantFrameScrollingMessageFrame:AddMessage(literal_msg)
+            if Elephant:IsSessionStartMessage(msg_tbl) then
+              last_added_header_index = line_index
+            end
+          end
         end
       end
     end
