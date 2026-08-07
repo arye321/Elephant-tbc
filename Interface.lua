@@ -675,6 +675,26 @@ function Elephant:GetLogName(log_index)
   return Elephant:LogsDb().logs[log_index].name
 end
 
+-- Strips WoW color codes, hyperlinks, and textures from formatted log text
+function Elephant:StripWoWFormatting(str)
+  if type(str) ~= "string" then return "" end
+  str = string.gsub(str, "|c%x%x%x%x%x%x%x%x", "")
+  str = string.gsub(str, "|r", "")
+  str = string.gsub(str, "|H.-|h(.-)|h", "%1")
+  str = string.gsub(str, "|T.-|t", "")
+  return str
+end
+
+-- Resets search query state and clears search input box
+function Elephant:ClearSearch()
+  Elephant:VolatileConfig().search_query = ""
+  if ElephantFrameSearchEditBox then
+    ElephantFrameSearchEditBox:SetText("")
+    ElephantFrameSearchEditBox:ClearFocus()
+  end
+  Elephant:ShowCurrentLog()
+end
+
 -- Shows a log, based on the current selected one.
 --
 -- First clears the main scrolling message frame, then sets the color of the
@@ -696,21 +716,49 @@ function Elephant:ShowCurrentLog()
   ElephantFrameTitleInfoFrameTabFontString:SetText(
     "< " .. Elephant:GetLogName(current_log_index) .. " >"
   )
-  Elephant:SetTitleInfoCurrentLine()
-  Elephant:UpdateCurrentLogButtons()
 
-  -- Populate the scrolling message frame
-  for line_index = Elephant:VolatileConfig().currentline - Elephant:DefaultConfiguration().scrollmaxlines, Elephant:VolatileConfig().currentline do
-    if Elephant:LogsDb().logs[current_log_index].logs[line_index] then
-      ElephantFrameScrollingMessageFrame:AddMessage(
-        Elephant:GetLiteralMessage(
-          Elephant:LogsDb().logs[current_log_index].logs[line_index],
-          --[[use_timestamps=]]
-          true
+  local search_query = Elephant:VolatileConfig().search_query
+  local trimmed_query = search_query and search_query:match("^%s*(.-)%s*$") or ""
+  local is_filtered = (trimmed_query ~= "")
+
+  if is_filtered then
+    local query_lower = string.lower(trimmed_query)
+    local log_entries = Elephant:LogsDb().logs[current_log_index].logs
+    local match_count = 0
+
+    for line_index = 1, #log_entries do
+      local msg_tbl = log_entries[line_index]
+      if msg_tbl then
+        local literal_msg = Elephant:GetLiteralMessage(msg_tbl, true)
+        local stripped_msg = Elephant:StripWoWFormatting(literal_msg)
+        if string.find(string.lower(stripped_msg), query_lower, 1, true) then
+          match_count = match_count + 1
+          ElephantFrameScrollingMessageFrame:AddMessage(literal_msg)
+        end
+      end
+    end
+
+    ElephantFrameTitleInfoFrameCurrentLineFontString:SetText(
+      match_count .. " / " .. #log_entries .. " (Filtered)"
+    )
+  else
+    Elephant:SetTitleInfoCurrentLine()
+
+    -- Populate the scrolling message frame
+    for line_index = Elephant:VolatileConfig().currentline - Elephant:DefaultConfiguration().scrollmaxlines, Elephant:VolatileConfig().currentline do
+      if Elephant:LogsDb().logs[current_log_index].logs[line_index] then
+        ElephantFrameScrollingMessageFrame:AddMessage(
+          Elephant:GetLiteralMessage(
+            Elephant:LogsDb().logs[current_log_index].logs[line_index],
+            --[[use_timestamps=]]
+            true
+          )
         )
-      )
+      end
     end
   end
+
+  Elephant:UpdateCurrentLogButtons()
 
   -- Updating message catchers button
   for _, event_tbl in pairs(Elephant:ProfileDb().events) do

@@ -135,12 +135,86 @@
         </Layers>
       </Frame>
 
-      <!-- Main scrolling message frame -->
-      <ScrollingMessageFrame name="$parentScrollingMessageFrame">
-        <Size x="523" y="498"/>
+      <!-- Search bar -->
+      <EditBox name="$parentSearchEditBox" inherits="InputBoxTemplate" autoFocus="false">
+        <Size x="180" y="20"/>
         <Anchors>
           <Anchor point="TOPLEFT">
-            <Offset x="31" y="-34"/>
+            <Offset x="85" y="-33"/>
+          </Anchor>
+        </Anchors>
+        <Layers>
+          <Layer level="BACKGROUND">
+            <FontString name="$parentLabel" inherits="GameFontNormalSmall" text="Search:">
+              <Anchors>
+                <Anchor point="RIGHT" relativeTo="$parent" relativePoint="LEFT">
+                  <Offset x="-6" y="0"/>
+                </Anchor>
+              </Anchors>
+            </FontString>
+          </Layer>
+        </Layers>
+        <Scripts>
+          <OnLoad>
+            self:SetTextInsets(0, 0, 0, 0)
+            if Elephant.L and Elephant.L["STRING_SEARCH_LABEL"] then
+              _G[self:GetName() .. "Label"]:SetText(Elephant.L["STRING_SEARCH_LABEL"])
+            end
+          </OnLoad>
+          <OnTextChanged>
+            Elephant:VolatileConfig().search_query = self:GetText()
+            Elephant:ShowCurrentLog()
+          </OnTextChanged>
+          <OnEscapePressed>
+            self:SetText("")
+            Elephant:VolatileConfig().search_query = ""
+            self:ClearFocus()
+            Elephant:ShowCurrentLog()
+          </OnEscapePressed>
+          <OnEnterPressed>
+            self:ClearFocus()
+          </OnEnterPressed>
+          <OnEnter>
+            Elephant:SetTooltip(self, {
+              (Elephant.L and Elephant.L["STRING_SEARCH_TOOLTIP"]) or "Search log",
+              (Elephant.L and Elephant.L["STRING_SEARCH_TOOLTIP_DESC"]) or "Type text to filter log messages in real-time."
+            })
+          </OnEnter>
+          <OnLeave>
+            Elephant:UnsetTooltip()
+          </OnLeave>
+        </Scripts>
+      </EditBox>
+      <Button name="$parentSearchClearButton" inherits="UIPanelCloseButton">
+        <Size x="20" y="20"/>
+        <Anchors>
+          <Anchor point="LEFT" relativeTo="$parentSearchEditBox" relativePoint="RIGHT">
+            <Offset x="2" y="0"/>
+          </Anchor>
+        </Anchors>
+        <Scripts>
+          <OnLoad>
+            self:SetScript("OnClick", function()
+              Elephant:ClearSearch()
+            end)
+          </OnLoad>
+          <OnEnter>
+            Elephant:SetTooltip(self, {
+              (Elephant.L and Elephant.L["STRING_SEARCH_CLEAR_TOOLTIP"]) or "Clear search filter"
+            })
+          </OnEnter>
+          <OnLeave>
+            Elephant:UnsetTooltip()
+          </OnLeave>
+        </Scripts>
+      </Button>
+
+      <!-- Main scrolling message frame -->
+      <ScrollingMessageFrame name="$parentScrollingMessageFrame">
+        <Size x="523" y="472"/>
+        <Anchors>
+          <Anchor point="TOPLEFT">
+            <Offset x="31" y="-60"/>
           </Anchor>
         </Anchors>
         <Layers>
@@ -175,10 +249,10 @@
 
       <!-- Buttons for scrolling -->
       <Frame name="$parentScrollingMessageTextureFrame">
-        <Size x="535" y="510"/>
+        <Size x="535" y="484"/>
         <Anchors>
           <Anchor point="TOPLEFT" relativeTo="$parent" relativePoint="TOPLEFT">
-            <Offset x="25" y="-28"/>
+            <Offset x="25" y="-54"/>
           </Anchor>
         </Anchors>
         <Layers>

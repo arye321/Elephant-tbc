@@ -100,6 +100,9 @@ local volatile_configuration = {
   is_copywindow_bbcode = false,
 
   warned_cannot_log_some_msgs_in_combat = false,
+
+  -- Search query for live log filtering
+  search_query = "",
 }
 
 -- Temporary config, not saved but does change at runtime
